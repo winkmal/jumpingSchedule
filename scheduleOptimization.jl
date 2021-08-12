@@ -1,19 +1,10 @@
 # Small script to test Cbc in Julia on schedule optimization problem (MILP)
 # Learning directly from the JuMP tutorials how things are done
 using JuMP, LinearAlgebra, Plots
-import Cbc, CSV, DataFrames, Tables
+import CSV, DataFrames, Tables
 
 const problemSize   = 24*3                          # can go up to 216
-
-# Preparing an optimization model
-model               = Model(optimizer_with_attributes(Cbc.Optimizer, "maxNodes" => problemSize*1000))
-set_optimizer_attribute(model, "threads", 4)
-
-# Objective for this optimization comes from European Power Exchange (EPEX) prices
-epexPriceT          = CSV.read("Input_Output_Plots/epexPrices2019.csv", DataFrames.DataFrame, delim=";", header=false, dateformat="d-model-Y")
-cols                = 3:3+problemSize-1
-# Using line=2 or 14 as it contains also negative prices!!!
-epexPriceVect       = [epexPriceT[12, col] for col in cols] # DataFrameRow to Vector
+solver              = "Cbc"
 
 # Assumptions about CHP(s)
 P_inst_chpus        = [250; 500]                    # kW
@@ -23,9 +14,30 @@ eta_el              = [0.38; 0.41]                  # gives weighted average of 
 heatValMeth         = 9.97                          # kWh/m³
 q_ch4_mean_nom      = P_bem/eta_el[2]/heatValMeth   # m³/h, assuming bigger CHP is more efficient
 #powerQuotient       = P_inst/P_bem 
-#methFlowrateChpuMax = q_ch4_mean_nom*powerQuotient  # m³/h
 numOfChps           = length(P_inst_chpus)          # Assuming n *unequally* sized CHPs
-@variable(model, 0 <= x[1:problemSize*numOfChps] <= 1, Int)   # Binary decision variable vector
+
+# Preparing an optimization model
+if cmp(solver, "Cbc") == 0
+    import Cbc
+    model               = Model(optimizer_with_attributes(Cbc.Optimizer, "maxNodes" => problemSize*1000))
+    set_optimizer_attribute(model, "threads", 4)
+    @variable(model, 0 <= x[1:problemSize*numOfChps] <= 1, Int)   # Binary decision variable vector
+elseif cmp(solver, "GLPK") == 0
+    import GLPK
+    model               = Model(optimizer_with_attributes(GLPK.Optimizer, "it_lim" => problemSize*10))
+    set_optimizer_attribute(model, "msg_lev", 3)
+    @variable(model, 0 <= x[1:problemSize*numOfChps] <= 1, Int)   # Binary decision variable vector
+else
+    import Clp
+    model               = Model(optimizer_with_attributes(Clp.Optimizer, "MaximumIterations" => problemSize*10))
+    @variable(model, 0 <= x[1:problemSize*numOfChps] <= 1)        # Real decision variable vector
+end
+
+# Objective for this optimization comes from European Power Exchange (EPEX) prices
+epexPriceT          = CSV.read("Input_Output_Plots/epexPrices2019.csv", DataFrames.DataFrame, delim=";", header=false, dateformat="d-model-Y")
+cols                = 3:3+problemSize-1
+# Using line=2 or 14 as it contains also negative prices!!!
+epexPriceVect       = [epexPriceT[12, col] for col in cols] # DataFrameRow to Vector
 
 methFlowrateChpus   = P_inst_chpus./eta_el/heatValMeth
 # Define constraints

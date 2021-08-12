@@ -9,7 +9,8 @@ From the plant owner's point of view, the objective is to maximize direct market
 Since prices are only known one day in advance, prediction algorithms have been developed to forecast future market development.
 One such approach is published in the [GermanPowerMarket.database.toolbox](https://gitlab.com/M.Dotzauer/gpm_dbtb), which also served as a source of some of the raw data in this repository.
 
-Mathematically, this kind of optimization problem is known as **mixed-integer linear programming** ([**MILP**](https://en.wikipedia.org/wiki/Linear_programming#Integer_unknowns)).
+Usually, CHPs are only operated in full load (or turned off completely).
+Mathematically, this leads to an optimization problem known as **mixed-integer linear programming** ([**MILP**](https://en.wikipedia.org/wiki/Linear_programming#Integer_unknowns)).
 
 ## Why did I create this repository?
 I have been developing and running several schedule optimization codes in **Matlab** as part of my research work.
