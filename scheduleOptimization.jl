@@ -9,7 +9,7 @@ const problemSize   = 96                            # can go up to 216
 model               = Model(optimizer_with_attributes(Cbc.Optimizer, "seconds" => problemSize))
 
 # Objective for this optimization comes from European Power Exchange (EPEX) prices
-epexPriceT          = CSV.read("epexPrices2019.csv", DataFrames.DataFrame, delim=";", header=false, dateformat="d-model-Y")
+epexPriceT          = CSV.read("Input_Output_Plots/epexPrices2019.csv", DataFrames.DataFrame, delim=";", header=false, dateformat="d-model-Y")
 cols                = 3:3+problemSize-1
 # Using line=2 or 14 as it contains also negative prices!!!
 epexPriceVect       = [epexPriceT[12, col] for col in cols] # DataFrameRow to Vector
