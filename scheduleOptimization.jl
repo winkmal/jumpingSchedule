@@ -1,12 +1,13 @@
 # Small script to test Cbc in Julia on schedule optimization problem (MILP)
 # Learning directly from the JuMP tutorials how things are done
 using JuMP, LinearAlgebra, Plots
-import Cbc, CSV, DataFrames
+import Cbc, CSV, DataFrames, Tables
 
-const problemSize   = 96                            # can go up to 216
+const problemSize   = 24*3                          # can go up to 216
 
 # Preparing an optimization model
-model               = Model(optimizer_with_attributes(Cbc.Optimizer, "seconds" => problemSize*2))
+model               = Model(optimizer_with_attributes(Cbc.Optimizer, "maxNodes" => problemSize*1000))
+set_optimizer_attribute(model, "threads", 4)
 
 # Objective for this optimization comes from European Power Exchange (EPEX) prices
 epexPriceT          = CSV.read("Input_Output_Plots/epexPrices2019.csv", DataFrames.DataFrame, delim=";", header=false, dateformat="d-model-Y")
@@ -53,8 +54,11 @@ epexPriceVectMilp   = reshape((epexPriceVect*reshape(P_inst_chpus, 1, :))/P_inst
  
 # Call the optimizer
 optimize!(model)
-chpuOptMatrix = reshape(value.(x), :, numOfChps)
+chpuOptMatrix       = reshape(value.(x), :, numOfChps)
 # Plot the solution 
-plot(epexPriceVect)
-plot!(chpuOptMatrix*methFlowrateChpus, linetype=:steppre)
-plot!(initMethVol .+ cumsum(ones(problemSize)*q_ch4_mean_nom - chpuOptMatrix*methFlowrateChpus)) 
+plot(epexPriceVect)                                     #, label="EPEX price (€/MWh)")
+plot!(chpuOptMatrix*P_inst_chpus, linetype=:steppre)    #, label="CHP schedule")
+plot!(initMethVol .+ cumsum(ones(problemSize)*q_ch4_mean_nom - chpuOptMatrix*methFlowrateChpus)) #, label="V_ch4_GS") 
+# Additional: Write results to CSV file, so they can be easily diffed
+resultsMatrix       = hcat(chpuOptMatrix, initMethVol .+ cumsum(ones(problemSize)*q_ch4_mean_nom - chpuOptMatrix*methFlowrateChpus), epexPriceVect)
+CSV.write("Input_Output_Plots/resultsMatrix.csv", Tables.table(resultsMatrix), delim=";")
